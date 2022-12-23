@@ -1,0 +1,13 @@
+{
+    "name": "Atticus-dev",
+    "tree" : {
+        "$className": "DataModel", 
+
+        "ReplicatedStorage" : {
+            "Atticus" : {
+                "$path" : "src"
+            }
+        }
+
+    }
+}
