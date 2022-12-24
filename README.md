@@ -1,7 +1,7 @@
 # Atticus
 Atticus is a general, minimal, tool-independent and fast solution for sword creation on Roblox. It makes use of TeamSwordphin's [RaycastHitbox V4](https://devforum.roblox.com/t/raycast-hitbox-401-for-all-your-melee-needs/374482) to handle all the hitbox management.
 
-These are the features that Atticus currently support:
+## These are the features that Atticus currently support:
 * Swing animations:
     * Every time a swing happens, Atticus will switch to the next defined animation.
 * Holding Animations
@@ -19,4 +19,3 @@ These are the features that Atticus currently support:
     * Manual: Atticus allows you to manually create collisions for your sword using Attachments that are called `DmgPoint`.
 * Eager Animation Loading
     * Atticus eager loads all of your animations, so that your memory isn't leaked, and you won't suffer from performance loses- on top of that, Atticus also cleans up all of that animation mess when an owner is changed.
-    
