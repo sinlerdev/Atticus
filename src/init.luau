@@ -8,7 +8,7 @@ export type AtticusData = {
 	swingAnimations: { number },
 	holdingAnimations: { number },
 	raycastParam: RaycastParams?,
-	processor: (BasePart, Humanoid, RaycastResult, string) -> (boolean),
+	processor: (BasePart, Humanoid, RaycastResult, string, number) -> (boolean),
 	normalDamage: number,
 	criticalDamage: number,
 	criticalInterval: number,
@@ -24,14 +24,25 @@ export type AtticusToolInformation = {
 local Events = {
 	Hit = true,
 	SwingEnded = true,
+	OwnerChanged = true,
 }
 
-type events = "Hit" | "SwingEnded"
+type events = "Hit" | "SwingEnded" | "OwnerChanged"
 
 local function makeAnimation(id)
 	local animation = Instance.new("Animation")
 	animation.AnimationId = "rbxassetid://" .. id
 	return animation
+end
+
+local function LoadAnimation(inputArray: { number }, animator: Animator): { AnimationTrack }
+	local output = table.create(#inputArray)
+	for _, id in inputArray do
+		local object = makeAnimation(id)
+		table.insert(output, animator:LoadAnimation(object))
+	end
+
+	return output
 end
 
 local freeThread -- Thread reusage
@@ -72,6 +83,8 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 		IsSwinging = false,
 		tracks = { swing = {}, hold = {} },
 		signals = {},
+		lastSwingIndex = 0,
+		allSwingCount = #data.holdingAnimations
 	}, Atticus)
 
 	for Event in Events do
@@ -79,9 +92,9 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 	end
 
 	self.hitbox.Visualizer = true
-	local points = {}
 
 	if toolInformation.automaticCollision then
+		local points = {}
 		-- Automatically create set of points that emulate the shape of the given collisionPart
 		local halfX = (collisionPartSize.X / 2)
 		local halfZ = (collisionPartSize.Z / 2)
@@ -95,13 +108,14 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 		end
 
 		self.hitbox:SetPoints(collisionPart, points, "AutoCollision")
+		table.clear(points)
 	end
 	self.hitbox.RaycastParams = data.raycastParam or self.hitbox.RaycastParams
 
 	-- setup hit detection
 	local lastCountHit = 0
 	self.hitbox.OnHit:Connect(function(hit, humanoid: Humanoid, RaycastResults, group)
-		if not data.processor(hit, humanoid, RaycastResults, group) then
+		if not data.processor(hit, humanoid, RaycastResults, group, lastCountHit) then
 			return
 		end
 
@@ -113,37 +127,34 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 			lastCountHit = 0
 		end
 
-		fireConnections(self.signals["Hit"], hit, humanoid, RaycastResults, group)
+		fireConnections(self.signals["Hit"], hit, humanoid, RaycastResults, group, lastCountHit)
 	end)
 
-	toolInformation.Equipped:Connect(function()
+	-- setup eager animation loading + cleanup when changed to a new owner
+	self.equippedConnection = toolInformation.Equipped:Connect(function()
 		local owner = PlayerService:GetPlayerFromCharacter(toolInformation.ToolWrapper.Parent)
 		local animator = owner.Character.Humanoid.Animator :: Animator
+		local tracks = self.tracks
 		if owner ~= self.owner then
 			if self.owner then
-				for _, value in self.tracks do
+				for _, value in tracks do
 					for _, track in value do
 						track:Destroy()
 					end
 				end
-				table.clear(self.tracks.hold)
-				table.clear(self.tracks.swing)
+				table.clear(tracks.hold)
+				table.clear(tracks.swing)
+
+				fireConnections(self.signals["OwnerChanged"], owner, self.owner)
 			end
 
-			for _, id in data.swingAnimations do
-				local object = makeAnimation(id)
-				table.insert(self.tracks.swing, animator:LoadAnimation(object))
-			end
-
-			for _, id in data.holdingAnimations do
-				local object = makeAnimation(id)
-				table.insert(self.tracks.hold, animator:LoadAnimation(object))
-			end
+			tracks.swing = LoadAnimation(data.swingAnimations, animator)
+			tracks.hold = LoadAnimation(data.holdingAnimations, animator)
 
 			self.owner = owner
 		end
 
-		for _, animationTrack in self.tracks.hold do
+		for _, animationTrack in tracks.hold do
 			animationTrack:Play()
 			animationTrack.Stopped:Wait()
 		end
@@ -151,19 +162,28 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 	return self
 end
 
-function Atticus:On(eventName: events, fn)
-	local event = self.signal[eventName]
+function Atticus:on(eventName: events, fn)
+	local event = self.signals[eventName]
 	table.insert(event, fn)
 end
 
 function Atticus:swing()
-	self.IsSwinging = true
+	self.lastSwingIndex += 1
+
+	if self.lastSwingIndex > self.allSwingCount then
+		self.lastSwingIndex = 1
+	end
+
 	self.hitbox:HitStart()
-	local track = self.tracks.swing[1]
+
+	local track = self.tracks.swing[self.lastSwingIndex]
+
 	track:Play()
 	track.Stopped:Wait()
-	self.IsSwinging = false
+
 	self.hitbox:HitStop()
+
+	fireConnections(self.signals["SwingEnded"])
 end
 
 return Atticus
