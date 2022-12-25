@@ -71,7 +71,7 @@ local function SpawnWithReuse(fn, ...)
 end
 
 local function fireConnections(connectionTable, ...)
-	for _, fn in connectionTable do
+	for fn in connectionTable do
 		SpawnWithReuse(fn, ...)
 	end
 end
@@ -173,7 +173,10 @@ end
 
 function Atticus:on(eventName: events, fn)
 	local event = self.signals[eventName]
-	table.insert(event, fn)
+	event[fn] = true
+	return function() 
+		event[fn] = nil
+	end
 end
 
 function Atticus:swing()
