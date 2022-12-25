@@ -86,7 +86,7 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 		tracks = { swing = {}, hold = {} },
 		signals = {}:: {[events]: {}},
 		lastSwingIndex = 0,
-		allSwingCount = #data.holdingAnimations
+		allSwingCount = #data.swingAnimations
 	}, Atticus)
 
 	for Event in Events do
