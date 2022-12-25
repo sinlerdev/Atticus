@@ -22,12 +22,14 @@ export type AtticusToolInformation = {
 }
 
 local Events = {
+	Hitting = true,
 	Hit = true,
+	Swinging = true,
 	SwingEnded = true,
 	OwnerChanged = true,
 }
 
-type events = "Hit" | "SwingEnded" | "OwnerChanged"
+type events = "Hitting" | "Hit" | "Swinging" | "SwingEnded" | "OwnerChanged"
 
 local function makeAnimation(id)
 	local animation = Instance.new("Animation")
@@ -82,7 +84,7 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 		hitbox = raycastHitbox.new(collisionPart),
 		IsSwinging = false,
 		tracks = { swing = {}, hold = {} },
-		signals = {},
+		signals = {}:: {[events]: {}},
 		lastSwingIndex = 0,
 		allSwingCount = #data.holdingAnimations
 	}, Atticus)
@@ -90,7 +92,7 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 	for Event in Events do
 		self.signals[Event] = {}
 	end
-	
+
 	if toolInformation.automaticCollision then
 		local points = {}
 		-- Automatically create set of points that emulate the shape of the given collisionPart
@@ -116,6 +118,7 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 		if not data.processor(hit, humanoid, RaycastResults, group, lastCountRecord, self.owner) then
 			return
 		end
+		fireConnections(self.signals["Hitting"], hit, humanoid, RaycastResults, group)
 		if not lastCountRecord[humanoid] then
 			lastCountRecord[humanoid] = 0
 		end
@@ -174,6 +177,7 @@ function Atticus:on(eventName: events, fn)
 end
 
 function Atticus:swing()
+	fireConnections(self.signals["Swinging"])
 	self.IsSwinging = true
 	self.lastSwingIndex += 1
 
