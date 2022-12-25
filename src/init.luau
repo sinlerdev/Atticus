@@ -8,7 +8,7 @@ export type AtticusData = {
 	swingAnimations: { number },
 	holdingAnimations: { number },
 	raycastParam: RaycastParams?,
-	processor: (BasePart, Humanoid, RaycastResult, string, number) -> (boolean),
+	processor: (BasePart, Humanoid, RaycastResult, string, {[Humanoid]: number}, Player) -> (boolean),
 	normalDamage: number,
 	criticalDamage: number,
 	criticalInterval: number,
@@ -90,9 +90,7 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 	for Event in Events do
 		self.signals[Event] = {}
 	end
-
-	self.hitbox.Visualizer = true
-
+	
 	if toolInformation.automaticCollision then
 		local points = {}
 		-- Automatically create set of points that emulate the shape of the given collisionPart
@@ -113,21 +111,29 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 	self.hitbox.RaycastParams = data.raycastParam or self.hitbox.RaycastParams
 
 	-- setup hit detection
-	local lastCountHit = 0
+	local lastCountRecord = {}
 	self.hitbox.OnHit:Connect(function(hit, humanoid: Humanoid, RaycastResults, group)
-		if not data.processor(hit, humanoid, RaycastResults, group, lastCountHit) then
+		if not data.processor(hit, humanoid, RaycastResults, group, lastCountRecord, self.owner) then
 			return
 		end
-
-		if lastCountHit ~= data.criticalInterval then
-			humanoid:TakeDamage(data.normalDamage)
-			lastCountHit += 1
-		else
-			humanoid:TakeDamage(data.criticalDamage)
-			lastCountHit = 0
+		if not lastCountRecord[humanoid] then
+			lastCountRecord[humanoid] = 0
 		end
 
-		fireConnections(self.signals["Hit"], hit, humanoid, RaycastResults, group, lastCountHit)
+		humanoid.Destroying:Connect(function()
+			lastCountRecord[humanoid] = nil
+		end)
+		
+		lastCountRecord[humanoid] += 1
+
+		if lastCountRecord[humanoid] ~= data.criticalInterval then
+			humanoid:TakeDamage(data.normalDamage)
+		else
+			humanoid:TakeDamage(data.criticalDamage)
+			lastCountRecord[humanoid] = 0
+		end
+
+		fireConnections(self.signals["Hit"], hit, humanoid, RaycastResults, group, lastCountRecord)
 	end)
 
 	-- setup eager animation loading + cleanup when changed to a new owner
@@ -168,6 +174,7 @@ function Atticus:on(eventName: events, fn)
 end
 
 function Atticus:swing()
+	self.IsSwinging = true
 	self.lastSwingIndex += 1
 
 	if self.lastSwingIndex > self.allSwingCount then
@@ -177,11 +184,20 @@ function Atticus:swing()
 	self.hitbox:HitStart()
 
 	local track = self.tracks.swing[self.lastSwingIndex]
+	local waitForTime
+	if track then
+		track:Play()
+		track.Stopped:Wait()
+	else
+		waitForTime = 0.5
+	end
 
-	track:Play()
-	track.Stopped:Wait()
+	if waitForTime then
+		task.wait(waitForTime)
+	end
 
 	self.hitbox:HitStop()
+	self.IsSwinging = false
 
 	fireConnections(self.signals["SwingEnded"])
 end

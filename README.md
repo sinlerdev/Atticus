@@ -19,3 +19,48 @@ Atticus is a general, minimal, tool-independent and fast solution for sword crea
     * Manual: Atticus allows you to manually create collisions for your sword using Attachments that are called `DmgPoint`.
 * Eager Animation Loading
     * Atticus eager loads all of your animations, so that your memory isn't leaked, and you won't suffer from performance loses- on top of that, Atticus also cleans up all of that animation mess when an owner is changed.
+# Example
+Before doing anything, grab a sword that contains a BasePart that is the Handle, and then put in in workspace.
+
+After that, copy the following snippet and paste it in a **server-sided** script.
+
+Aside from fixing/developing the tool model you got *(welding its parts together, etc etc)*, there isn't much you need to manage when working with Atticus.
+```lua
+local Atticus = require(game.ReplicatedStorage.Atticus)
+local tool = workspace.Tool
+
+local sword = Atticus.new(
+	{
+		ToolWrapper = tool,
+		collisionPart = tool.Handle,
+		automaticCollision = true,
+		Equipped = tool.Equipped
+	},
+	{
+        -- replace the 000s with actual animations.
+		swingAnimations = {000, 000, 000},
+		holdingAnimations = {000},
+		processor = function(hit, humanoid, RaycastResults, group, lastCountHit, owner)
+			local ownerHumanoid = owner.Character.Humanoid
+			
+			return humanoid ~= ownerHumanoid
+		end,
+		normalDamage = 10,
+		criticalDamage = 200,
+		criticalInterval = 3
+	}
+)
+
+-- this makes your sword hitbox visible!
+sword.hitbox.Visualizer = true
+
+sword:on("SwingEnded", function()
+	print("print swing ended")
+end)
+
+tool.Activated:Connect(function()
+	if not sword.IsSwinging then
+		sword:swing()
+	end
+end)
+```
