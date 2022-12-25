@@ -37,7 +37,7 @@ local sword = Atticus.new(
 		Equipped = tool.Equipped
 	},
 	{
-        -- replace the 000s with actual animations.
+            -- replace the 000s with actual animations.
 		swingAnimations = {000, 000, 000},
 		holdingAnimations = {000},
 		processor = function(hit, humanoid, RaycastResults, group, lastCountHit, owner)
