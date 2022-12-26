@@ -4,10 +4,12 @@
         "$className": "DataModel", 
 
         "ReplicatedStorage" : {
-            "Atticus" : {
-                "$path" : "src"
+            "Packages" : {
+                "$path" : "Packages",
+                "Atticus" : {
+                  "$path" : "src"
+                }
             }
         }
-
     }
 }

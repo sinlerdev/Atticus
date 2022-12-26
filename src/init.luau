@@ -1,14 +1,31 @@
 local PlayerService = game:GetService("Players")
 
-local raycastHitbox = require(script.RaycastHitboxV4)
+local raycastHitbox = require(script.Parent.RaycastHitbox)
+--[=[
+	@class Atticus
+
+	The class used for creating Atticus objects.
+]=]
 local Atticus = {}
 Atticus.__index = Atticus
+
+--[=[
+	@within Atticus
+	@interface AtticusData
+	.swingAnimations {number} -- An array filled with animation IDs
+	.holdingAnimations {number} -- An array filled with animation IDs
+	.raycastParam RaycastParams? -- A raycastparam that will override the default one
+	.processor: (BasePart, Humanoid, RaycastResult, string, { [Humanoid]: number }, Player) -> (boolean),
+	normalDamage: number
+	criticalDamage: number
+	criticalInterval: number
+]=]
 
 export type AtticusData = {
 	swingAnimations: { number },
 	holdingAnimations: { number },
 	raycastParam: RaycastParams?,
-	processor: (BasePart, Humanoid, RaycastResult, string, {[Humanoid]: number}, Player) -> (boolean),
+	processor: (BasePart, Humanoid, RaycastResult, string, { [Humanoid]: number }, Player) -> (boolean),
 	normalDamage: number,
 	criticalDamage: number,
 	criticalInterval: number,
@@ -84,9 +101,9 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 		hitbox = raycastHitbox.new(collisionPart),
 		IsSwinging = false,
 		tracks = { swing = {}, hold = {} },
-		signals = {}:: {[events]: {}},
+		signals = {} :: { [events]: {} },
 		lastSwingIndex = 0,
-		allSwingCount = #data.swingAnimations
+		allSwingCount = #data.swingAnimations,
 	}, Atticus)
 
 	for Event in Events do
@@ -126,7 +143,7 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 		humanoid.Destroying:Connect(function()
 			lastCountRecord[humanoid] = nil
 		end)
-		
+
 		lastCountRecord[humanoid] += 1
 
 		if lastCountRecord[humanoid] ~= data.criticalInterval then
@@ -174,7 +191,7 @@ end
 function Atticus:on(eventName: events, fn)
 	local event = self.signals[eventName]
 	event[fn] = true
-	return function() 
+	return function()
 		event[fn] = nil
 	end
 end

@@ -1,0 +1,34 @@
+[home]
+enabled = true
+includeReadme = false
+
+[[home.features]]
+title = "Animations Supercharged"
+description = "Enjoy properly-managed, and Eager-loaded animations for your swords!"
+
+[[home.features]]
+title = "Change How Rays behave"
+description = "Atticus allows you to override its default RaycastParams for its hitboxes"
+
+[[home.features]]
+title = "Processors"
+description = "Enjoy user-definied rules so that you can manage when Atticus' hitbox works and when it doesn't."
+
+[[home.features]]
+title = "Critical Attackes Supercharged"
+description = "Enjoy critical attackes with their properly-managed state."
+
+[[home.features]]
+title = "Detached from Tools"
+description = "Atticus, unlike other libraries, can work out of the box for your already-existing tooling system."
+
+[[home.features]]
+title = "Automatic or Manual Collision Calculation"
+description = "Either let Atticus calculate the best collisions for your hitboxes, or do it yourself with Attachments."
+
+[docusaurus]
+tagline = "A modern solution for sword creation on Roblox."
+
+[footer]
+style = "dark"
+copyright = "Copyright © 2022 Sinlerdev. Built with Moonwave and Docusaurus"
