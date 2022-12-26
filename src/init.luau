@@ -12,13 +12,27 @@ Atticus.__index = Atticus
 --[=[
 	@within Atticus
 	@interface AtticusData
-	.swingAnimations {number} -- An array filled with animation IDs
-	.holdingAnimations {number} -- An array filled with animation IDs
-	.raycastParam RaycastParams? -- A raycastparam that will override the default one
-	.processor: (BasePart, Humanoid, RaycastResult, string, { [Humanoid]: number }, Player) -> (boolean),
-	normalDamage: number
-	criticalDamage: number
-	criticalInterval: number
+	.swingAnimations {number} -- Array of animationIds that will be chozen an animation from to be played each swing
+	.holdingAnimations {number} -- Array of animationIds that will be played in order whenever the sword is equipped
+	.raycastParam RaycastParams? -- a RaycastParams to override the default one
+	.processor (BasePart, Humanoid, RaycastResult, string, { [Humanoid]: number }, Player) -> (boolean), -- a function that will be used for filtering hits
+	.normalDamage number -- the number that will be taken out of the Humanoid's health
+	.criticalDamage number -- the number that will be taken out of the Humanoid's health when the hit is a critical one
+	.criticalInterval number -- Once the number of hits-per-humanoid reaches this number, a critical hit is landed.
+]=]
+
+--[=[
+	@within Atticus
+	@interface AtticusToolInformation
+	.ToolWrapper Instance -- The object that houses all the tool's object
+	.collisionPart BasePart -- The collision part that Atticus will create a new hitbox for
+	.automaticCollision boolean? -- a bool to determine whether to let Atticus automatically calculate collisions or not.
+	.Equipped any -- The event that fires whenever the tool is equipped
+]=]
+
+--[=[
+	@within Atticus
+	@type events "Hitting" | "Hit" | "Swinging" | "SwingEnded" | "OwnerChanged"
 ]=]
 
 export type AtticusData = {
@@ -93,6 +107,35 @@ local function fireConnections(connectionTable, ...)
 	end
 end
 
+--[=[
+	@within Atticus
+	Constructs a new Atticus Instance *(not to be confused with Roblox Instances)*.
+
+	This follows a specific set of instructions, which are *(order matters)*:
+	1. Initializes all events
+	2. Automatically calculates all the collision info for `collisionPart`- if `automaticCollision` was passed as true
+	3. Overrides the default raycastParams if there is a provided one
+	4. Initalizes the hitbox detection system, which follows another set of instruction, which are:
+		1. Calls the provided processor, and will stop execution if a falsy value was returned
+		2. Fires the `Hitting` event
+		3. Increases the lastHitCount for the humanoid that was hitten
+		4. if the lastHitCount is equal to criticalInterval, Humanoid will take damage equal to `criticalDamage` and the lastHitCount for that Humanoid is reset to 0
+		5. otherwise, the humanoid will take damage equal to `normalDamage`.
+		6. Fires the `Hit` event.
+	5. Initializes a connection for Equipped, which follows yet another instruction set:
+		1. If the current owner is different than the old one:
+			1. If there was an older owner:
+				1. Destroys all the animation tracks
+				2. cleanup all the tables that holded those said tracks
+				3. fire "OwnerChanged" event
+			2. Load all the animation IDs into the current owner's Animator
+			2. change Atticus.owner to the new owner
+		2. Play all the loaded holding animation tracks in order.
+	
+	@param toolInformation AtticusToolInformation
+	@param data AtticusData
+	@return AtticusObj
+]=]
 function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 	local collisionPart = toolInformation.collisionPart
 	local collisionPartSize = collisionPart.Size
@@ -188,6 +231,15 @@ function Atticus.new(toolInformation: AtticusToolInformation, data: AtticusData)
 	return self
 end
 
+
+--[=[
+	@within Atticus
+	Connects a function to a specific signal. Returns a function that will disconnect that connection.
+	
+	@param eventName events
+	@param fn (...any) -> ()
+	@return () -> () 
+]=]
 function Atticus:on(eventName: events, fn)
 	local event = self.signals[eventName]
 	event[fn] = true
@@ -196,6 +248,18 @@ function Atticus:on(eventName: events, fn)
 	end
 end
 
+--[=[
+	@within Atticus
+	Performs a swing, that will do the following in this exact order:
+	1. fire the `Swinging` event
+	2. Sets AtticusObj.IsSwinging to true
+	3. Chooses the next swinging animation- if there is no next, will start from the first one
+	4. Starts the hitbox detection
+	5. Plays the chosen animation- and if there are no defined animation, will instead wait for 0.5 seconds
+	6. Stops the hitbox detection 
+	7. Sets AtticusObj.IsSwinging to false
+	8. fire the `SwingEnded` event
+]=]
 function Atticus:swing()
 	fireConnections(self.signals["Swinging"])
 	self.IsSwinging = true
